@@ -1,1 +1,1 @@
-gcc -lm seq_impl.c -o run
+gcc -lm mpi_impl.c -o run

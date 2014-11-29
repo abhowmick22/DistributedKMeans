@@ -13,5 +13,6 @@ float calc_squared_dist(float*, float*, int);
 int closest_cluster_calculator(float*, float**, int, int);
 float** get_cluster_centers(float** points, int numPoints, int numClusters, int dim, int maxIter, float threshold);
 
+float** file_read(char* filename);
 
 #endif

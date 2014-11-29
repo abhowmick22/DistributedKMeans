@@ -44,64 +44,7 @@ float** mpi_read(int       isBinaryFile,  /* flag: 0 or 1 */
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nproc);
 
-    if (isBinaryFile) {  /* using MPI-IO to read file concurrently */
-        int            err;
-        MPI_Offset     disp;
-        MPI_Datatype   filetype;
-        MPI_File       fh;
-
-        err = MPI_File_open(comm, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
-        if (err != MPI_SUCCESS) {
-            char errstr[MPI_MAX_ERROR_STRING];
-            int  errlen;
-            MPI_Error_string(err, errstr, &errlen);
-            printf("Error at opening file %s (%s)\n",filename,errstr);
-            MPI_Finalize();
-            exit(1);
-        }
-
-        /* read numObjs & numCoords from the 1st 2 integers */
-        MPI_File_read(fh, numObjs,   1, MPI_INT, &status);
-        MPI_File_read(fh, numCoords, 1, MPI_INT, &status);
-
-        if (*numObjs <= 0 || *numCoords <= 0) {
-            printf("Error: file format (%s)\n",filename);
-            MPI_Finalize();
-            exit(1);
-        }
-        if (*numObjs < nproc) {
-            printf("Error: number of data points must be larger than the number of MPI processes.\n");
-            MPI_Finalize();
-            exit(1);
-        }
-
-        divd = (*numObjs) / nproc;
-        rem  = (*numObjs) % nproc;
-        len  = (rank < rem) ? rank*(divd+1) : rank*divd + rem;
-        disp = 2 * sizeof(int) + len * (*numCoords) * sizeof(float);
-
-        /* adjust numObjs to be local size */
-        (*numObjs) = (rank < rem) ? divd+1 : divd;
-
-        /* allocate space for data points */
-        objects    = (float**)malloc((*numObjs)              * sizeof(float*));
-        assert(objects != NULL);
-        objects[0] = (float*) malloc((*numObjs)*(*numCoords) * sizeof(float));
-        assert(objects[0] != NULL);
-        for (i=1; i<(*numObjs); i++)
-            objects[i] = objects[i-1] + (*numCoords);
-
-        /* define a file type for file view */
-        MPI_Type_contiguous((*numObjs), MPI_FLOAT, &filetype);
-        MPI_Type_commit(&filetype);
-
-        MPI_File_set_view(fh, disp, MPI_FLOAT, filetype, "native",
-                          MPI_INFO_NULL);
-        MPI_File_read_all(fh, objects[0], (*numObjs)*(*numCoords),
-                          MPI_FLOAT, &status);
-        MPI_Type_free(&filetype);
-        MPI_File_close(&fh);
-    }
+    
     else { /* ASCII format: let proc 0 read and distribute to others */
         if (rank == 0) {
             objects = file_read(0, filename, numObjs, numCoords);

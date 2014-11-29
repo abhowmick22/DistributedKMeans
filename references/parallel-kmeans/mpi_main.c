@@ -30,13 +30,6 @@
 int      _debug;
 #include "kmeans.h"
 
-#ifdef _PNETCDF_BUILT
-#include <pnetcdf.h>
-float** pnetcdf_read(char*, char*, int*, int*, MPI_Comm);
-int     pnetcdf_write(char*, int, int, int, int, float**, int*, int, MPI_Comm,
-                      int verbose);
-#endif
-
 int     mpi_kmeans(float**, int, int, int, float, int*, float**, MPI_Comm);
 float** mpi_read(int, char*, int*, int*, MPI_Comm);
 int     mpi_write(int, char*, int, int, int, float**, int*, int, MPI_Comm,
@@ -137,40 +130,12 @@ int main(int argc, char **argv) {
 
     if (_debug) printf("Proc %d of %d running on %s\n", rank, nproc, mpi_name);
 
-#ifndef _PNETCDF_BUILT
-    if (do_pnetcdf) {
-        if (rank == 0) printf("Error: PnetCDF feature is not built\n");
-        MPI_Finalize();
-        exit(1);
-    }
-#endif
-
     MPI_Barrier(MPI_COMM_WORLD);
     io_timing = MPI_Wtime();
 
     /* read data points from file ------------------------------------------*/
-#ifdef _PNETCDF_BUILT
-    if (do_pnetcdf)
-        objects = pnetcdf_read(filename, var_name, &numObjs, &numCoords,
-                               MPI_COMM_WORLD);
-    else
-#endif
-        objects = mpi_read(isInFileBinary, filename, &numObjs, &numCoords,
+	objects = mpi_read(isInFileBinary, filename, &numObjs, &numCoords,
                            MPI_COMM_WORLD);
-
-    if (_debug) { /* print the first 4 objects' coordinates */
-        int num = (numObjs < 4) ? numObjs : 4;
-        for (i=0; i<num; i++) {
-            char strline[1024], strfloat[16];
-            sprintf(strline,"%d: objects[%d]= ",rank,i);
-            for (j=0; j<numCoords; j++) {
-                sprintf(strfloat,"%10f",objects[i][j]);
-                strcat(strline, strfloat);
-            }
-            strcat(strline, "\n");
-            printf("%s",strline);
-        }
-    }
 
     timing            = MPI_Wtime();
     io_timing         = timing - io_timing;
