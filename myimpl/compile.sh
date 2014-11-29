@@ -1,0 +1,1 @@
+gcc -lm seq_impl.c -o run
