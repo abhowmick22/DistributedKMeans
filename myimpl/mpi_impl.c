@@ -95,12 +95,18 @@ float** get_cluster_centers(float** points, int numPoints,
 		int totalNumPoints = 0;
 		int* tempNumPointsInCluster = (int*)malloc(numClusters*sizeof(int));
 		
+		//get the total sum of number of points that changed centers
 		MPI_Allreduce(&localPointsChanged, &totalPointsChanged, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		//get the total number of points in the dataset (could also be passed as a param to this function)
 		MPI_Allreduce(&numPoints, &totalNumPoints, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-		MPI_Allreduce(numPointsInCluster, tempNumPointsInCluster, numClusters, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		//for each center, get total number of points belonging to it
+		for(i=0;i<numClusters;i++) {
+			MPI_Allreduce(&numPointsInCluster[i], &tempNumPointsInCluster[i], 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		}
 		int* freeNumPointsInCluster = numPointsInCluster;
 		numPointsInCluster = tempNumPointsInCluster;
 		free(freeNumPointsInCluster);
+		//for each center, get the sum of all coordinates of all points belonging to it
 		float** tempPointsInCluster = (float **)malloc(numClusters*sizeof(float*));
 		temp = (float*)malloc(numClusters*dim*sizeof(float));
 		for(i=0;i<numClusters;i++) {
@@ -116,7 +122,7 @@ float** get_cluster_centers(float** points, int numPoints,
 		//assign new cluster centers
 		for(i=0; i<numClusters; i++) {
 			if(numPointsInCluster[i]==0) {
-				//shouldn't happen
+				//shouldn't happen because we start with centers chosen from input data points
 				continue;
 			}
 			for(j=0; j<dim; j++) {
