@@ -107,30 +107,82 @@ float** get_cluster_centers(float** points, int numPoints,
 
 int main(int argc, char* argv[]) {
 	
-	float** points = (float **) malloc(3*sizeof(float*));
-	points[0] = (float *) malloc(3*sizeof(float));
-	points[1] = (float *) malloc(3*sizeof(float));
-	points[2] = (float *) malloc(3*sizeof(float));
-	points[0][0]=2.0f;
-	points[0][1]=2.0f;
-	points[0][2]=2.0f;
-	points[1][0]=1.0f;
-	points[1][1]=1.0f;
-	points[1][2]=1.0f;
-	points[2][0]=1.5f;
-	points[2][1]=1.5f;
-	points[2][2]=1.5f;
-	//printf("%f\n", calc_squared_dist(point1, point2, 3));
-	float** cluster_centers = get_cluster_centers(points, 3, 3, 3, 100, 0.01);
-	int i=0, j=0;
-	for(i=0;i<3;i++) {
-		for(j=0; j<3; j++) {
-			printf("%f, ", cluster_centers[i][j]);
+	int numClusters = 3;
+	int* numPoints = (int*)malloc(sizeof(int));
+	float** init_centers = (float**)malloc(numClusters*sizeof(float*));
+	int dim = 6;
+	int totalNumPoints = 18;
+	
+	
+	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
+	float** points = readFromFileForMPI("/Users/neil/Documents/test.txt", numPoints,
+					   					dim, totalNumPoints, numClusters,
+					   					rank, numProcs, init_centers);
+	
+	if(points==NULL) {
+		MPI_Finalize();
+		return 0;
+	}
+	float** cluster_centers = get_cluster_centers(points, *numPoints,
+												  init_centers, numClusters,
+												  dim, 1000000, 0.0);
+	int i, j;
+	if(rank==0) {
+		printf("\n");
+		for(i=0; i<numClusters; i++) {
+			for(j=0; j<dim; j++) {
+				printf("%f, ", init_centers[i][j]);
+			}
+			printf("\n");
 		}
 		printf("\n");
+		//print cluster centers
+		for(i=0; i<numClusters; i++) {
+			for(j=0; j<dim; j++) {
+				printf("%f, ", cluster_centers[i][j]);
+			}
+			printf("\n");
+		}
 	}
-				
-				
+	/*
+	 int i, j;
+	 printf("Rank: %d, NumPoints: %d\n", rank, *numPoints);
+	 for(i=0;i<*numPoints;i++) {
+	 for(j=0;j<dim;j++) {
+	 printf("%f, ", points[i][j]);
+	 }
+	 printf("\n");
+	 }
+	 */
 	free(points);
+	free(cluster_centers);
+	free(init_centers);
+	free(numPoints);
+//	
+//	float** points = (float **) malloc(3*sizeof(float*));
+//	points[0] = (float *) malloc(3*sizeof(float));
+//	points[1] = (float *) malloc(3*sizeof(float));
+//	points[2] = (float *) malloc(3*sizeof(float));
+//	points[0][0]=2.0f;
+//	points[0][1]=2.0f;
+//	points[0][2]=2.0f;
+//	points[1][0]=1.0f;
+//	points[1][1]=1.0f;
+//	points[1][2]=1.0f;
+//	points[2][0]=1.5f;
+//	points[2][1]=1.5f;
+//	points[2][2]=1.5f;
+//	//printf("%f\n", calc_squared_dist(point1, point2, 3));
+//	float** cluster_centers = get_cluster_centers(points, 3, 3, 3, 100, 0.01);
+//	int i=0, j=0;
+//	for(i=0;i<3;i++) {
+//		for(j=0; j<3; j++) {
+//			printf("%f, ", cluster_centers[i][j]);
+//		}
+//		printf("\n");
+//	}
+//				
+//				
+//	free(points);
 	return 0;
 }

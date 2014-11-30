@@ -29,18 +29,20 @@ int closest_cluster_calculator(float* point, float** cluster_centers,
 }
 
 float** get_cluster_centers(float** points, int numPoints,
-							int numClusters, int dim,
-						int maxIter, float threshold) {//,
-//							float** cluster_centers) {
-				
-	//create initial centers = first numClusters number of
-	//points
-	float** cluster_centers = (float **)malloc(numClusters*sizeof(float*));
+							float** init_centers, int numClusters,
+							int dim, int maxIter, float threshold) {
+
 	int i, j;
+	float* temp;
+	//initialize cluster centers with init_centers
+	float** cluster_centers = (float **)malloc(numClusters*sizeof(float*));
+	temp = (float*)malloc(numClusters*dim*sizeof(float));
 	for(i=0;i<numClusters;i++) {
-		cluster_centers[i] = (float *)malloc(dim*sizeof(float));
+		cluster_centers[i] = &temp[i*dim];
+	}
+	for(i=0;i<numClusters;i++) {
 		for(j=0;j<dim;j++) {
-			cluster_centers[i][j] = points[i][j];			
+			cluster_centers[i][j] = init_centers[i][j];
 		}
 	}
 	
@@ -53,17 +55,19 @@ float** get_cluster_centers(float** points, int numPoints,
 	
 	//allocate memory for keeping track of sum of points that belong to each cluster
 	float** pointsInCluster = (float **)malloc(numClusters*sizeof(float*));
+	temp = (float*)malloc(numClusters*dim*sizeof(float));
 	for(i=0;i<numClusters;i++) {
-		pointsInCluster[i] = (float *)malloc(dim*sizeof(float));	//because we sum all the points for each cluster
+		pointsInCluster[i] = &temp[i*dim];	//because we sum all the points for each cluster;
+										    //also, contiguous memory very important for allreduce
 	}
 	//initialize #points count for each cluster
 	int* numPointsInCluster = (int*)malloc(numClusters*sizeof(int));
 	
 	//ratio = (# points changing cluster)/(total # points)
 	float ratio = threshold+1;
-	int iter = 0;
-	
+	int iter = 0;	
 	while(ratio > threshold && iter < maxIter) {
+	
 		for(i=0;i<numClusters;i++) {
 			for(j=0;j<dim;j++) {
 				pointsInCluster[i][j] = 0.0;
@@ -72,11 +76,11 @@ float** get_cluster_centers(float** points, int numPoints,
 		}
 
 		//for all points, calculate the closest cluster
-		int totalPointsChanged = 0;
+		int localPointsChanged = 0;
 		for(i=0;i<numPoints;i++) {
 			int closest_cluster = closest_cluster_calculator(points[i], cluster_centers, numClusters, dim);
 			if(closest_cluster != pointBelongsTo[i]) {
-				totalPointsChanged++;
+				localPointsChanged++;
 				pointBelongsTo[i] = closest_cluster;
 			}
 			
@@ -86,6 +90,28 @@ float** get_cluster_centers(float** points, int numPoints,
 			numPointsInCluster[closest_cluster]++;
 						
 		}
+		
+		int totalPointsChanged = 0;
+		int totalNumPoints = 0;
+		int* tempNumPointsInCluster = (int*)malloc(numClusters*sizeof(int));
+		
+		MPI_Allreduce(&localPointsChanged, &totalPointsChanged, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&numPoints, &totalNumPoints, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(numPointsInCluster, tempNumPointsInCluster, numClusters, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		int* freeNumPointsInCluster = numPointsInCluster;
+		numPointsInCluster = tempNumPointsInCluster;
+		free(freeNumPointsInCluster);
+		float** tempPointsInCluster = (float **)malloc(numClusters*sizeof(float*));
+		temp = (float*)malloc(numClusters*dim*sizeof(float));
+		for(i=0;i<numClusters;i++) {
+			tempPointsInCluster[i] = &temp[i*dim];
+		}
+		for(i=0;i<numClusters;i++) {
+			MPI_Allreduce(pointsInCluster[i], tempPointsInCluster[i], dim, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+		}
+		float** freePointsInCluster = pointsInCluster;
+		pointsInCluster = tempPointsInCluster;
+		free(freePointsInCluster);
 		
 		//assign new cluster centers
 		for(i=0; i<numClusters; i++) {
@@ -99,45 +125,97 @@ float** get_cluster_centers(float** points, int numPoints,
 		}
 		
 		iter++;
-		ratio = ((float)totalPointsChanged)/numPoints;
+		ratio = ((float)totalPointsChanged)/totalNumPoints;
+//		if(ratio==threshold) {
+//			int rank;
+//			MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//			if(rank==0) {
+//				for(i=0; i<numClusters; i++) {
+//					printf("Cluster centers:\n");
+//					for(j=0; j<dim; j++) {
+//						printf("%f, ",cluster_centers[i][j]);
+//					}
+//					printf("\n");
+//					printf("Points in cluster:\n");
+//					int k=0;
+//					for(k=0;k<numPoints;k++) {
+//						if(pointBelongsTo[k] != i)
+//							continue;
+//						for(j=0; j<dim; j++) {
+//							printf("%f, ",points[k][j]);
+//						}
+//						printf("\n");
+//					}
+//					printf("\n");
+//				}
+//			}
+//		}
 	}
 	
-	printf("Iter=%d\n", iter);
-	
 	return cluster_centers;
+	
 }
 
 int main(int argc, char* argv[]) {
 	
 	int flag;
 	MPI_Initialized(&flag);
-	printf("%d\n", flag);
 
-	float** points = (float **) malloc(3*sizeof(float*));
-	points[0] = (float *) malloc(3*sizeof(float));
-	points[1] = (float *) malloc(3*sizeof(float));
-	points[2] = (float *) malloc(3*sizeof(float));
-	points[0][0]=2.0f;
-	points[0][1]=2.0f;
-	points[0][2]=2.0f;
-	points[1][0]=1.0f;
-	points[1][1]=1.0f;
-	points[1][2]=1.0f;
-	points[2][0]=1.5f;
-	points[2][1]=1.5f;
-	points[2][2]=1.5f;
-	//printf("%f\n", calc_squared_dist(point1, point2, 3));
-	float** cluster_centers = get_cluster_centers(points, 3, 3, 3, 100, 0.01);
-	int i=0, j=0;
-	for(i=0;i<3;i++) {
-		for(j=0; j<3; j++) {
-			printf("%f, ", cluster_centers[i][j]);
+	int numProcs, rank, namelen;
+	char processor_name[MPI_MAX_PROCESSOR_NAME];
+	
+	if(!flag) {
+		MPI_Init(&argc, &argv);
+	}
+	
+	MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Get_processor_name(processor_name, &namelen);
+	
+	int numClusters = 3;
+	int* numPoints = (int*)malloc(sizeof(int));
+	float** init_centers = (float**)malloc(numClusters*sizeof(float*));
+	int dim = 2;
+	int totalNumPoints = 9;
+	
+	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
+	float** points = readFromFileForMPI("/Users/neil/Documents/test.txt", numPoints,
+					   					dim, totalNumPoints, numClusters,
+					   					rank, numProcs, init_centers);
+				
+	if(points==NULL) {
+		MPI_Finalize();
+		return 0;
+	}
+		
+	float** cluster_centers = get_cluster_centers(points, *numPoints,
+												  init_centers, numClusters,
+												  dim, 1000000, 0.0);
+	int i, j;
+	
+	if(rank==0) {
+		//print cluster centers
+		for(i=0; i<numClusters; i++) {
+			for(j=0; j<dim; j++) {
+				printf("%f, ", cluster_centers[i][j]);
+			}
+			printf("\n");
+		}
+	}
+	/*
+	int i, j;
+	printf("Rank: %d, NumPoints: %d\n", rank, *numPoints);
+	for(i=0;i<*numPoints;i++) {
+		for(j=0;j<dim;j++) {
+			printf("%f, ", points[i][j]);
 		}
 		printf("\n");
 	}
-				
-				
+	*/
 	free(points);
+	free(cluster_centers);
+	free(init_centers);
+	free(numPoints);
 	
 	MPI_Finalize();
 	return 0;
