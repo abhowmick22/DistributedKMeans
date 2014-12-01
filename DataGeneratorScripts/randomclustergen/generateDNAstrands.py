@@ -42,10 +42,10 @@ def tooClose(point, points, minDist):
 
 def handleArgs(args):
     # set up return values
-    sizeStrand = -1
-    numClusters = -1
-    numPoints = -1
-    totPoints = -1
+    sizeStrand = 0
+    numClusters = 0
+    numPoints = 0
+    totPoints = 0
     output = None
 
     try:
@@ -117,27 +117,37 @@ if totPoints > 0:
 # else, generate points according to clusters - also store underlying 
 # cluster and centroid info for future verification
 else :
-		# step 1: generate each 2D centroid
-		centroids_radii = []
-		minDistance = 0
-		for i in range(0, numClusters):
-			centroid_radius = drawOrigin(maxValue)
-			# is it far enough from the others?
-			while (tooClose(centroid_radius, centroids_radii, minDistance)):
-				centroid_radius = drawOrigin(maxValue)
-			centroids_radii.append(centroid_radius)
+		# file for storing underlying info
+		centroidWriter = csv.writer(open(output + "-centroidinfo", 'w'))
+		
+		# step 1: generate centroid strands
+		centroids = []
+		for i in range(numClusters):
+			s = ""
+			# generate a random strand
+			for j in range(sizeStrand):
+				s += getRandomBase()
+			centroidWriter.writerow(s)
+			centroids.append(s)
 
-		# step 2: generate the points for each centroid
-		points = []
-		minClusterVar = 0
-		maxClusterVar = 0.5
-		for i in range(0, numClusters):
-			# compute the variance for this cluster
-			variance = numpy.random.uniform(minClusterVar, maxClusterVar)
-			cluster = centroids_radii[i]
-			for j in range(0, numPoints):
-				# generate a 2D point with specified variance
-				# point is normally-distributed around centroids[i]
-				x, y = numpy.random.normal(cluster, variance)
-				# write the points out
-				writer.writerow([x, y])
+		# step 2: for each cluster, generate points
+		points = []					
+		for i in range(numClusters):
+			centroid = centroids[i]
+			
+			# generate all points for this cluster
+			for j in range(numPoints):
+				s = ""
+				for k in range(sizeStrand):
+					# for each position, the base differs from centroid
+					# with mutation prob 0.2
+					if numpy.random.rand() >= 0.2:
+						s += centroid[k]
+					else:
+						s += getRandomBase()
+				points.append(s)
+		
+		# shuffle the points and write to output
+		numpy.random.shuffle(points)
+		for point in points:
+			writer.writerow(point)
