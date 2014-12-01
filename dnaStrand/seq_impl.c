@@ -3,22 +3,22 @@
 #include <math.h>
 #include "allfunc.h"
 
-float calc_squared_dist(float* point1, float* point2, int dim) {
-	float retDist = 0.0f;
-	int i=0;
-	for(i=0; i<dim; i++) {
-		retDist = retDist + pow((point2[i]-point1[i]), 2);
+int calc_string_dist(char* point1, char* point2, int dim) {
+	int retDist = 0;
+	for(int i=0; i<dim; i++) {
+		if(point1[i] != point2[i]){
+			retDist = retDist + 1;
+		}
 	}
 	return retDist;
 }
 
-int closest_cluster_calculator(float* point, float** cluster_centers,
+int closest_cluster_calculator(char* point, char** cluster_centers,
 								int numClusters, int dim) {
-	float min_dist = calc_squared_dist(point, cluster_centers[0], dim);
+	int min_dist = calc_string_dist(point, cluster_centers[0], dim);
 	int closest_center = 0;
-	int i=1;
-	for(; i<numClusters; i++) {
-		float temp_dist = calc_squared_dist(point, cluster_centers[i], dim);
+	for(int i=1; i<numClusters; i++) {
+		int temp_dist = calc_string_dist(point, cluster_centers[i], dim);
 		if(temp_dist < min_dist) {
 			min_dist = temp_dist;
 			closest_center = i;
@@ -27,16 +27,16 @@ int closest_cluster_calculator(float* point, float** cluster_centers,
 	return closest_center;
 }
 
-float** get_cluster_centers(float** points, int numPoints,
+char** get_cluster_centers(char** points, int numPoints,
 							int numClusters, int dim,
 							int maxIter, float threshold) {
 				
 	//create initial centers = first numClusters number of
 	//points
-	float** cluster_centers = (float **)malloc(numClusters*sizeof(float*));
+	char** cluster_centers = (char **)malloc(numClusters*sizeof(char*));
 	int i, j;
 	for(i=0;i<numClusters;i++) {
-		cluster_centers[i] = (float *)malloc(dim*sizeof(float));
+		cluster_centers[i] = (char *)malloc(dim*sizeof(char));
 		for(j=0;j<dim;j++) {
 			cluster_centers[i][j] = points[i][j];			
 		}
@@ -49,37 +49,51 @@ float** get_cluster_centers(float** points, int numPoints,
 		pointBelongsTo[i] = -1;
 	}
 	
-	//allocate memory for keeping track of sum of points that belong to each cluster
-	float** pointsInCluster = (float **)malloc(numClusters*sizeof(float*));
-	for(i=0;i<numClusters;i++) {
-		pointsInCluster[i] = (float *)malloc(dim*sizeof(float));	//because we sum all the points for each cluster
-	}
+	//allocate memory for keeping track of majority bases that belong to each position cluster
+	// Use pointsInCluster and numPointsInCluster to implement the majority voting algorithm to count the majority 
+	char** pointsInCluster = (char **)malloc(numClusters*sizeof(char*));
+	//initialize #points count for each cluster-dim
+	int** counter = (int**)malloc(numClusters*sizeof(int*));
 	//initialize #points count for each cluster
 	int* numPointsInCluster = (int*)malloc(numClusters*sizeof(int));
+	for(i=0;i<numClusters;i++) {
+		pointsInCluster[i] = (char *)malloc(dim*sizeof(char));	//because we sum all the points for each cluster
+		counter[i] = (int *)malloc(dim*sizeof(int));	// counter for all positions in cluster string
+	}
 	
 	//ratio = (# points changing cluster)/(total # points)
 	float ratio = threshold+1;
-	int iter = 0;
-	
+	int iter = 0;	
 	while(ratio > threshold && iter < maxIter) {
+	
 		for(i=0;i<numClusters;i++) {
 			for(j=0;j<dim;j++) {
-				pointsInCluster[i][j] = 0.0;
+				pointsInCluster[i][j] = 'a';			// default base in string position
+				counter[i][j] = 0;
 			}
 			numPointsInCluster[i] = 0;
 		}
 
 		//for all points, calculate the closest cluster
-		int totalPointsChanged = 0;
+		int localPointsChanged = 0;
 		for(i=0;i<numPoints;i++) {
 			int closest_cluster = closest_cluster_calculator(points[i], cluster_centers, numClusters, dim);
 			if(closest_cluster != pointBelongsTo[i]) {
-				totalPointsChanged++;
+				localPointsChanged++;
 				pointBelongsTo[i] = closest_cluster;
 			}
 			
 			for(j=0;j<dim;j++) {
-				pointsInCluster[closest_cluster][j] += points[i][j];
+				if(counter[closest_cluster][j] == 0){
+					pointsInCluster[closest_cluster][j] = points[i][j];
+					counter[closest_cluster][j]++;
+				}
+				else{
+					if(points[i][j] == pointsInCluster[closest_cluster][j])
+						counter[closest_cluster][j]++;
+					else
+						counter[closest_cluster][j]--;
+				}
 			}
 			numPointsInCluster[closest_cluster]++;
 						
@@ -92,7 +106,7 @@ float** get_cluster_centers(float** points, int numPoints,
 				continue;
 			}
 			for(j=0; j<dim; j++) {
-				cluster_centers[i][j] = pointsInCluster[i][j]/numPointsInCluster[i];
+				cluster_centers[i][j] = pointsInCluster[i][j];
 			}
 		}
 		
@@ -109,13 +123,13 @@ int main(int argc, char* argv[]) {
 	
 	int numClusters = 3;
 	int* numPoints = (int*)malloc(sizeof(int));
-	float** init_centers = (float**)malloc(numClusters*sizeof(float*));
+	char** init_centers = (char**)malloc(numClusters*sizeof(char*));
 	int dim = 6;
 	int totalNumPoints = 18;
 	
 	
 	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
-	float** points = readFromFileForMPI("/Users/neil/Documents/test.txt", numPoints,
+	char** points = readFromFileForMPI("/home/abhishek/15-640/project4/dnaStrand/test.txt", numPoints 
 					   					dim, totalNumPoints, numClusters,
 					   					rank, numProcs, init_centers);
 	
@@ -123,7 +137,7 @@ int main(int argc, char* argv[]) {
 		MPI_Finalize();
 		return 0;
 	}
-	float** cluster_centers = get_cluster_centers(points, *numPoints,
+	char** cluster_centers = get_cluster_centers(points, *numPoints,
 												  init_centers, numClusters,
 												  dim, 1000000, 0.0);
 	int i, j;
@@ -131,7 +145,7 @@ int main(int argc, char* argv[]) {
 		printf("\n");
 		for(i=0; i<numClusters; i++) {
 			for(j=0; j<dim; j++) {
-				printf("%f, ", init_centers[i][j]);
+				printf("%c, ", init_centers[i][j]);
 			}
 			printf("\n");
 		}
@@ -139,50 +153,14 @@ int main(int argc, char* argv[]) {
 		//print cluster centers
 		for(i=0; i<numClusters; i++) {
 			for(j=0; j<dim; j++) {
-				printf("%f, ", cluster_centers[i][j]);
+				printf("%c, ", cluster_centers[i][j]);
 			}
 			printf("\n");
 		}
 	}
-	/*
-	 int i, j;
-	 printf("Rank: %d, NumPoints: %d\n", rank, *numPoints);
-	 for(i=0;i<*numPoints;i++) {
-	 for(j=0;j<dim;j++) {
-	 printf("%f, ", points[i][j]);
-	 }
-	 printf("\n");
-	 }
-	 */
 	free(points);
 	free(cluster_centers);
 	free(init_centers);
 	free(numPoints);
-//	
-//	float** points = (float **) malloc(3*sizeof(float*));
-//	points[0] = (float *) malloc(3*sizeof(float));
-//	points[1] = (float *) malloc(3*sizeof(float));
-//	points[2] = (float *) malloc(3*sizeof(float));
-//	points[0][0]=2.0f;
-//	points[0][1]=2.0f;
-//	points[0][2]=2.0f;
-//	points[1][0]=1.0f;
-//	points[1][1]=1.0f;
-//	points[1][2]=1.0f;
-//	points[2][0]=1.5f;
-//	points[2][1]=1.5f;
-//	points[2][2]=1.5f;
-//	//printf("%f\n", calc_squared_dist(point1, point2, 3));
-//	float** cluster_centers = get_cluster_centers(points, 3, 3, 3, 100, 0.01);
-//	int i=0, j=0;
-//	for(i=0;i<3;i++) {
-//		for(j=0; j<3; j++) {
-//			printf("%f, ", cluster_centers[i][j]);
-//		}
-//		printf("\n");
-//	}
-//				
-//				
-//	free(points);
 	return 0;
 }

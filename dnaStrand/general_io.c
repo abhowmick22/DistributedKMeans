@@ -9,7 +9,7 @@
  * Reads data points from file for both MPI and sequential access.
  * GP = General purpose.
  */
-float** readFromFileForGP(char* filename, int dim, int numPoints) {
+char** readFromFileForGP(char* filename, int dim, int numPoints) {
 	
 	FILE* fp;
 	fp = fopen(filename, "r");
@@ -19,12 +19,12 @@ float** readFromFileForGP(char* filename, int dim, int numPoints) {
 	}
 	
 	char line[200];		//max 200 chars in line
-	const char splitString[] = " \n";
+	const char splitString[] = " ,\n";
 	int numPointsSoFar = 0;
 	int i, j;
 	//initialize data points array
-	float** points = (float**)malloc(numPoints*sizeof(float*));
-	float* temp = (float*)malloc(numPoints*dim*sizeof(float));		//for contiguous 2d array
+	char** points = (char**)malloc(numPoints*sizeof(char*));
+	char* temp = (char*)malloc(numPoints*dim*sizeof(char));		//for contiguous 2d array
 	printf("Reading points...\n");
 	while(fgets(line, 200, fp) != NULL && numPointsSoFar < numPoints) {
 		char* token = strtok(line, splitString);
@@ -38,10 +38,10 @@ float** readFromFileForGP(char* filename, int dim, int numPoints) {
 				printf("Invalid input: only first %d dimensions will be considered at the %dth point.\n", dim, (numPointsSoFar+1));
 				break;
 			}
-			if(!sscanf(token, "%f", &nextDim)) {
+			if(!sscanf(token, "%c", &nextDim)) {
 				//error: invalid input
 				fclose(fp);
-				printf("Invalid input: Encountered non-numeric character at %dth point.\n", (numPointsSoFar+1));
+				printf("Invalid input: Encountered non-char at %dth point.\n", (numPointsSoFar+1));
 				return NULL;
 			}
 			points[numPointsSoFar][i] = nextDim;
@@ -58,9 +58,9 @@ float** readFromFileForGP(char* filename, int dim, int numPoints) {
 		memset(line, 0, 200);
 		//print the point read
 		for(j=0;j<dim-1;j++) {
-			printf("%f, ", points[numPointsSoFar-1][j]);
+			printf("%c, ", points[numPointsSoFar-1][j]);
 		}
-		printf("%f\n", points[numPointsSoFar-1][dim-1]);
+		printf("%c\n", points[numPointsSoFar-1][dim-1]);
 	}
 	if(numPointsSoFar != numPoints) {
 		//error: number of input points should be at least as much as mentioned by user

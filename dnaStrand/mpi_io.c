@@ -10,12 +10,12 @@
  * points to their corresponding processors for nearest cluster
  * center calculation.
  */
-char** readFromFileForMPI(char* filename, int dim, int totalNumPoints, int numClusters,
+char** readFromFileForMPI(char* filename, int* numPoints, int dim, int totalNumPoints, int numClusters,
 							int rank, int numProcs, char** init_centers) {
 				
 	MPI_Status status;
-	float* temp;
-	float** points;
+	char* temp;
+	char** points;
 	int sigCont;
 	//logic: the master reads the file using general_io and sends
 	//certain number of points to each processor to calculate
@@ -56,7 +56,7 @@ char** readFromFileForMPI(char* filename, int dim, int totalNumPoints, int numCl
 	int pointToSome = totalNumPoints%numProcs;	//extra point is sent to those procs with
 												//rank < remaining #points (rank starts at 0)
 	int i, j;
-	temp = (float*)malloc(numClusters*dim*sizeof(float));
+	temp = (char*)malloc(numClusters*dim*sizeof(char));
 	for(i=0; i<numClusters; i++) {
 		init_centers[i] = &temp[i*dim];
 	}
@@ -69,7 +69,7 @@ char** readFromFileForMPI(char* filename, int dim, int totalNumPoints, int numCl
 		for(i=0; i<numClusters; i++) {
 			prevCenters[i] = -1;
 		}
-		for(i=0;i<numClusters;) {
+		for(i=0;i<numClusters;i++) {
 			//srand(time(NULL));	//TODO: can be remove to reduce delay
 			int r = i;//TODO: rand() % totalNumPoints;
 			//check if the same has been encountered before
@@ -78,19 +78,17 @@ char** readFromFileForMPI(char* filename, int dim, int totalNumPoints, int numCl
 					break;
 				}
 			}
-			if(j!=i) {
-				continue;
+			if(j==i) {
+				prevCenters[i] = r;
+				for(j=0;j<dim;j++) {
+					init_centers[i][j] = points[r][j];
+				}
 			}
-			prevCenters[i] = r;
-			for(j=0;j<dim;j++) {
-				init_centers[i][j] = points[r][j];
-			}
-			i++;
 		}
 		free(prevCenters);
 		
 		//broadcast init centers to all other nodes
-		MPI_Bcast(init_centers[0], numClusters*dim, MPI_FLOAT, 0, MPI_COMM_WORLD);
+		MPI_Bcast(init_centers[0], numClusters*dim, MPI_CHAR, 0, MPI_COMM_WORLD);
 		
 		int startIndex = 0;
 		//points to be analysed by master
@@ -109,13 +107,13 @@ char** readFromFileForMPI(char* filename, int dim, int totalNumPoints, int numCl
 				numPointsToSend++;
 			}
 			//tag each message with the rank of the receiver
-			MPI_Send(points[startIndex], numPointsToSend*dim, MPI_FLOAT, j, j, MPI_COMM_WORLD);
+			MPI_Send(points[startIndex], numPointsToSend*dim, MPI_CHAR, j, j, MPI_COMM_WORLD);
 			startIndex += numPointsToSend;
 		}
 		
 		//now, the master should process only the first part of the points
-		float** newPoints = (float**)malloc((*numPoints)*sizeof(float*));
-		temp = malloc((*numPoints)*dim*sizeof(float));
+		char** newPoints = (char**)malloc((*numPoints)*sizeof(char*));
+		temp = malloc((*numPoints)*dim*sizeof(char));
 		for(i=0; i<(*numPoints); i++) {
 			newPoints[i] = &temp[i*dim];
 		}
@@ -124,7 +122,7 @@ char** readFromFileForMPI(char* filename, int dim, int totalNumPoints, int numCl
 				newPoints[i][j] = points[i][j];
 			}
 		}
-		float** oldPoints = points;
+		char** oldPoints = points;
 		points = newPoints;
 		free(oldPoints);
 	} else {
@@ -135,12 +133,12 @@ char** readFromFileForMPI(char* filename, int dim, int totalNumPoints, int numCl
 			(*numPoints)++;
 		}
 		
-		points = (float**)malloc((*numPoints)*sizeof(float*));
-		temp = (float*)malloc((*numPoints)*dim*sizeof(float));
+		points = (char**)malloc((*numPoints)*sizeof(char*));
+		temp = (char*)malloc((*numPoints)*dim*sizeof(char));
 		for(i=0; i<(*numPoints); i++) {
 			points[i] = &temp[i*dim];
 		}
-		MPI_Recv(points[0], (*numPoints)*dim, MPI_FLOAT, 0, rank, MPI_COMM_WORLD, &status);
+		MPI_Recv(points[0], (*numPoints)*dim, MPI_CHAR, 0, rank, MPI_COMM_WORLD, &status);
 	}
 	
 	
