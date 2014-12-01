@@ -10,9 +10,9 @@ def usage():
     print '$> python generateDNAstrands.py <required args> [optional args]\n' + \
         '\t-o <file>\tFilename for the output of the dna strands\n' + \
         '\t-s <#>\t\tSize of DNA strand\n' + \
-        '\t-n [#]\t\tTotal number of points\n' + \
-        '\t-c [#]\t\tNumber of clusters to generate\n' + \
-        '\t-p [#]\t\tNumber of points per cluster\n' 
+        '\t-n [#]\t\tTotal number of points, set to zero if not using this\n' + \
+        '\t-c [#]\t\tNumber of clusters to generate, set to zero if not using this\n' + \
+        '\t-p [#]\t\tNumber of points per cluster, set to zero if not using this\n' 
 
 def stringDistance(p1, p2):
     '''
