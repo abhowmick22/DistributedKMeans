@@ -3,8 +3,8 @@
 #include <math.h>
 #include "allfunc.h"
 
-float calc_squared_dist(float* point1, float* point2, int dim) {
-	float retDist = 0.0f;
+double calc_squared_dist(double* point1, double* point2, int dim) {
+	double retDist = 0.0f;
 	int i=0;
 	for(i=0; i<dim; i++) {
 		retDist = retDist + pow((point2[i]-point1[i]), 2);
@@ -12,13 +12,13 @@ float calc_squared_dist(float* point1, float* point2, int dim) {
 	return retDist;
 }
 
-int closest_cluster_calculator(float* point, float** cluster_centers,
+int closest_cluster_calculator(double* point, double** cluster_centers,
 								int numClusters, int dim) {
-	float min_dist = calc_squared_dist(point, cluster_centers[0], dim);
+	double min_dist = calc_squared_dist(point, cluster_centers[0], dim);
 	int closest_center = 0;
 	int i=1;
 	for(; i<numClusters; i++) {
-		float temp_dist = calc_squared_dist(point, cluster_centers[i], dim);
+		double temp_dist = calc_squared_dist(point, cluster_centers[i], dim);
 		if(temp_dist < min_dist) {
 			min_dist = temp_dist;
 			closest_center = i;
@@ -27,20 +27,49 @@ int closest_cluster_calculator(float* point, float** cluster_centers,
 	return closest_center;
 }
 
-float** get_cluster_centers(float** points, int numPoints,
+double** get_cluster_centers_seq(double** points, int numPoints,
 							int numClusters, int dim,
-							int maxIter, float threshold) {
+							int maxIter, int totalNumPoints,
+							double threshold) {
 				
 	//create initial centers = first numClusters number of
 	//points
-	float** cluster_centers = (float **)malloc(numClusters*sizeof(float*));
+	double** cluster_centers = (double **)malloc(numClusters*sizeof(double*));
 	int i, j;
-	for(i=0;i<numClusters;i++) {
-		cluster_centers[i] = (float *)malloc(dim*sizeof(float));
-		for(j=0;j<dim;j++) {
-			cluster_centers[i][j] = points[i][j];			
+	
+	//assign first numClusters points as initial centers
+//	for(i=0;i<numClusters;i++) {
+//		cluster_centers[i] = (double *)malloc(dim*sizeof(double));
+//		for(j=0;j<dim;j++) {
+//			cluster_centers[i][j] = points[i][j];			
+//		}
+//	}
+	
+	//random initial centers
+	int* prevCenters = (int*)malloc(numClusters*sizeof(int));
+	for(i=0; i<numClusters; i++) {
+		prevCenters[i] = -1;
+	}	
+	for(i=0;i<numClusters;) {
+		srand(time(NULL));	//will introduce delay, but will be more randomized
+		int r = rand() % totalNumPoints;
+		//check if the same has been encountered before
+		for(j=0;j<i;j++) {
+			if(prevCenters[j]==r) {
+				break;
+			}
 		}
+		if(j!=i) {
+			continue;
+		}
+		cluster_centers[i] = (double *)malloc(dim*sizeof(double));
+		prevCenters[i] = r;
+		for(j=0;j<dim;j++) {
+			cluster_centers[i][j] = points[r][j];
+		}
+		i++;
 	}
+	free(prevCenters);
 	
 	//define array for each point and the cluster it belongs to
 	int* pointBelongsTo = (int*)malloc(numPoints*sizeof(int));
@@ -50,15 +79,15 @@ float** get_cluster_centers(float** points, int numPoints,
 	}
 	
 	//allocate memory for keeping track of sum of points that belong to each cluster
-	float** pointsInCluster = (float **)malloc(numClusters*sizeof(float*));
+	double** pointsInCluster = (double **)malloc(numClusters*sizeof(double*));
 	for(i=0;i<numClusters;i++) {
-		pointsInCluster[i] = (float *)malloc(dim*sizeof(float));	//because we sum all the points for each cluster
+		pointsInCluster[i] = (double *)malloc(dim*sizeof(double));	//because we sum all the points for each cluster
 	}
 	//initialize #points count for each cluster
 	int* numPointsInCluster = (int*)malloc(numClusters*sizeof(int));
 	
 	//ratio = (# points changing cluster)/(total # points)
-	float ratio = threshold+1;
+	double ratio = threshold+1;
 	int iter = 0;
 	
 	while(ratio > threshold && iter < maxIter) {
@@ -97,7 +126,7 @@ float** get_cluster_centers(float** points, int numPoints,
 		}
 		
 		iter++;
-		ratio = ((float)totalPointsChanged)/numPoints;
+		ratio = ((double)totalPointsChanged)/numPoints;
 	}
 	
 	printf("Iter=%d\n", iter);
@@ -107,82 +136,29 @@ float** get_cluster_centers(float** points, int numPoints,
 
 int main(int argc, char* argv[]) {
 	
-	int numClusters = 3;
-	int* numPoints = (int*)malloc(sizeof(int));
-	float** init_centers = (float**)malloc(numClusters*sizeof(float*));
-	int dim = 6;
-	int totalNumPoints = 18;
+	int numClusters = 5;
+	double** init_centers = (double**)malloc(numClusters*sizeof(double*));
+	int dim = 2;
+	int totalNumPoints = 50000;
 	
 	
 	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
-	float** points = readFromFileForMPI("/Users/neil/Documents/test.txt", numPoints,
-					   					dim, totalNumPoints, numClusters,
-					   					rank, numProcs, init_centers);
+	double** points = readFromFileForGP("/Users/neil/Documents/cluster.csv", dim, totalNumPoints);
 	
-	if(points==NULL) {
-		MPI_Finalize();
-		return 0;
-	}
-	float** cluster_centers = get_cluster_centers(points, *numPoints,
-												  init_centers, numClusters,
-												  dim, 1000000, 0.0);
-	int i, j;
-	if(rank==0) {
-		printf("\n");
-		for(i=0; i<numClusters; i++) {
-			for(j=0; j<dim; j++) {
-				printf("%f, ", init_centers[i][j]);
-			}
-			printf("\n");
-		}
-		printf("\n");
-		//print cluster centers
-		for(i=0; i<numClusters; i++) {
-			for(j=0; j<dim; j++) {
-				printf("%f, ", cluster_centers[i][j]);
-			}
-			printf("\n");
-		}
-	}
-	/*
-	 int i, j;
-	 printf("Rank: %d, NumPoints: %d\n", rank, *numPoints);
-	 for(i=0;i<*numPoints;i++) {
-	 for(j=0;j<dim;j++) {
-	 printf("%f, ", points[i][j]);
-	 }
-	 printf("\n");
-	 }
-	 */
-	free(points);
-	free(cluster_centers);
-	free(init_centers);
-	free(numPoints);
-//	
-//	float** points = (float **) malloc(3*sizeof(float*));
-//	points[0] = (float *) malloc(3*sizeof(float));
-//	points[1] = (float *) malloc(3*sizeof(float));
-//	points[2] = (float *) malloc(3*sizeof(float));
-//	points[0][0]=2.0f;
-//	points[0][1]=2.0f;
-//	points[0][2]=2.0f;
-//	points[1][0]=1.0f;
-//	points[1][1]=1.0f;
-//	points[1][2]=1.0f;
-//	points[2][0]=1.5f;
-//	points[2][1]=1.5f;
-//	points[2][2]=1.5f;
-//	//printf("%f\n", calc_squared_dist(point1, point2, 3));
-//	float** cluster_centers = get_cluster_centers(points, 3, 3, 3, 100, 0.01);
-//	int i=0, j=0;
-//	for(i=0;i<3;i++) {
-//		for(j=0; j<3; j++) {
+	double** cluster_centers = get_cluster_centers_seq(points, totalNumPoints,
+												  numClusters, dim,
+												  1000000, totalNumPoints,
+												  0.0);
+//	int i, j;
+//	//print cluster centers
+//	for(i=0; i<numClusters; i++) {
+//		for(j=0; j<dim; j++) {
 //			printf("%f, ", cluster_centers[i][j]);
 //		}
 //		printf("\n");
 //	}
-//				
-//				
-//	free(points);
+	writeToFileForGP("./output/2doutput_seq.csv", cluster_centers, numClusters, dim);
+	free(points);
+	free(cluster_centers);
 	return 0;
 }
