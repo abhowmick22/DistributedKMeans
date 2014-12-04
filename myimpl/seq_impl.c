@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <sys/timeb.h>
 #include "allfunc.h"
 
 double calc_squared_dist(double* point1, double* point2, int dim) {
@@ -140,24 +141,38 @@ int main(int argc, char* argv[]) {
 	double** init_centers = (double**)malloc(numClusters*sizeof(double*));
 	int dim = 2;
 	int totalNumPoints = 50000;
+	struct timeb tmb;
 	
-	
+	ftime(&tmb);	
+	double startInputTime = (double)tmb.time+(double)tmb.millitm/1000;
 	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
-	double** points = readFromFileForGP("/Users/neil/Documents/cluster.csv", dim, totalNumPoints);
+	double** points = readFromFileForGP("/Users/neil/Documents/cluster.csv", dim, totalNumPoints);	
+	ftime(&tmb);
+	double endInputTime = (double)tmb.time+(double)tmb.millitm/1000;
+	printf("Read done\n");
 	
+	ftime(&tmb);
+	double startClusteringTime = (double)tmb.time+(double)tmb.millitm/1000;
 	double** cluster_centers = get_cluster_centers_seq(points, totalNumPoints,
 												  numClusters, dim,
 												  1000000, totalNumPoints,
 												  0.0);
-//	int i, j;
-//	//print cluster centers
-//	for(i=0; i<numClusters; i++) {
-//		for(j=0; j<dim; j++) {
-//			printf("%f, ", cluster_centers[i][j]);
-//		}
-//		printf("\n");
-//	}
+	ftime(&tmb);			
+	double endClusteringTime = (double)tmb.time+(double)tmb.millitm/1000;
+	printf("Clustering done\n");
+	
+	
+	ftime(&tmb);
+	double startOutputTime = (double)tmb.time+(double)tmb.millitm/1000;
 	writeToFileForGP("./output/2doutput_seq.csv", cluster_centers, numClusters, dim);
+	ftime(&tmb);
+	double endOutputTime = (double)tmb.time+(double)tmb.millitm/1000;
+	printf("Write done\n");
+	
+	
+	printf("IO time: %lf\n", (endInputTime-startInputTime+endOutputTime-startOutputTime));
+	printf("Clustering time: %lf\n", (endClusteringTime-startClusteringTime));
+	
 	free(points);
 	free(cluster_centers);
 	return 0;
