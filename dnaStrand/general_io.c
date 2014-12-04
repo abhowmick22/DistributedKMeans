@@ -29,7 +29,7 @@ char** readFromFileForGP(char* filename, int dim, int numPoints) {
 	while(fgets(line, 200, fp) != NULL && numPointsSoFar < numPoints) {
 		char* token = strtok(line, splitString);
 		i=0;
-		float nextDim = 0.0;
+		char nextDim = 'a';							// default base
 		//identify starting location for this point in the 2d array
 		points[numPointsSoFar] = &temp[numPointsSoFar*dim];
 		while(token != NULL) {
@@ -70,4 +70,16 @@ char** readFromFileForGP(char* filename, int dim, int numPoints) {
 	fclose(fp);
 	printf("All points read successfully.\n");
 	return points;
+}
+
+void writeToFileForGP(char* filename, char** cluster_centers, int numClusters, int dim) {
+	FILE* file = fopen(filename, "w");
+	int i, j;
+	for(i=0; i<numClusters; i++) {
+		for(j=0; j<dim-1; j++) {
+			fprintf(file, "%c, ", cluster_centers[i][j]);
+		}
+		fprintf(file, "%c\n", cluster_centers[i][j]);
+	}
+	close(file);
 }

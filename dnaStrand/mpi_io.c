@@ -70,19 +70,20 @@ char** readFromFileForMPI(char* filename, int* numPoints, int dim, int totalNumP
 			prevCenters[i] = -1;
 		}
 		for(i=0;i<numClusters;i++) {
-			//srand(time(NULL));	//TODO: can be remove to reduce delay
-			int r = i;//TODO: rand() % totalNumPoints;
+			srand(time(NULL));	// will introduce delay, but more randomized
+			int r = rand() % totalNumPoints;
 			//check if the same has been encountered before
 			for(j=0;j<i;j++) {
 				if(prevCenters[j]==r) {
 					break;
 				}
 			}
-			if(j==i) {
-				prevCenters[i] = r;
-				for(j=0;j<dim;j++) {
-					init_centers[i][j] = points[r][j];
-				}
+			if(j!=i) {
+				continue;
+			}
+			prevCenters[i] = r;
+			for(j=0;j<dim;j++) {
+				init_centers[i][j] = points[r][j];
 			}
 		}
 		free(prevCenters);

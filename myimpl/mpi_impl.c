@@ -123,7 +123,7 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 		//assign new cluster centers
 		for(i=0; i<numClusters; i++) {
 			if(numPointsInCluster[i]==0) {
-				//shouldn't happen because we start with centers chosen from input data points
+				//CHECK: shouldn't happen because we start with centers chosen from input data points
 				continue;
 			}
 			for(j=0; j<dim; j++) {
