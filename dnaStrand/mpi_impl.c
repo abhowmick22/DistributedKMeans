@@ -18,7 +18,7 @@ void getWeights(weights *in, weights *inout, int *len,
 		 MPI_Datatype *dptr)
 {
 	weights c;
-
+	int i;
 	for (i=0; i< *len; ++i) {
 		int j;
 		c.a = in->a + inout->a;
@@ -34,7 +34,8 @@ void getWeights(weights *in, weights *inout, int *len,
 
 int calc_string_dist(char* point1, char* point2, int dim) {
 	int retDist = 0;
-	for(int i=0; i<dim; i++) {
+	int i;
+	for(i=0; i<dim; i++) {
 		if(point1[i] != point2[i]){
 			retDist = retDist + 1;
 		}
@@ -46,7 +47,8 @@ int closest_cluster_calculator(char* point, char** cluster_centers,
 								int numClusters, int dim) {
 	int min_dist = calc_string_dist(point, cluster_centers[0], dim);
 	int closest_center = 0;
-	for(int i=1; i<numClusters; i++) {
+	int i;
+	for(i=1; i<numClusters; i++) {
 		int temp_dist = calc_string_dist(point, cluster_centers[i], dim);
 		if(temp_dist < min_dist) {
 			min_dist = temp_dist;
@@ -156,14 +158,14 @@ char** get_cluster_centers_mpi(char** points, int numPoints,
 
 		//to compute each cluster center, get the weights of all coordinates of all points belonging to it
 		weights** tempPointWeightsInCluster = (weights **)malloc(numClusters*sizeof(weights*));
-		temp = (weights*)malloc(numClusters*dim*sizeof(weights));
+		weights* tempWeight = (weights*)malloc(numClusters*dim*sizeof(weights));
 		for(i=0;i<numClusters;i++) {
-			tempPointWeightsInCluster[i] = &temp[i*dim];
+			tempPointWeightsInCluster[i] = &tempWeight[i*dim];
 		}
 
 		// create the getWeights user-op
 		MPI_Op myOp;
-		MPI_Op_create(getWeights, True, &myOp);
+		MPI_Op_create((MPI_User_function *)getWeights, 1, &myOp);
 
 		// explain to MPI how type weights is defined
 		MPI_Datatype wtype;
@@ -174,7 +176,7 @@ char** get_cluster_centers_mpi(char** points, int numPoints,
 			// TODO: How to do this step ?, use mpi_op_create
 			MPI_Allreduce(pointWeightsInCluster[i], tempPointWeightsInCluster[i], dim, wtype, myOp, MPI_COMM_WORLD);
 		}
-		char** freePointWeightsInCluster = pointWeightsInCluster;
+		weights** freePointWeightsInCluster = pointWeightsInCluster;
 		pointWeightsInCluster = tempPointWeightsInCluster;
 		free(freePointWeightsInCluster);
 		
@@ -244,6 +246,10 @@ int main(int argc, char* argv[]) {
 	int dim = 2;
 	int totalNumPoints = 50000;
 	
+	//block for all to synchronize
+	MPI_Barrier(MPI_COMM_WORLD);
+	double startInputTime = MPI_Wtime();
+
 	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
 	char** points = readFromFileForMPI("/home/abhishek/15-640/project4/dnaStrand/cluster.csv", numPoints,
 					   					dim, totalNumPoints, numClusters,
