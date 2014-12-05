@@ -137,41 +137,101 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 
 int main(int argc, char* argv[]) {
 	
-	int numClusters = 5;
+	int totalNumPoints = 0;
+	int numClusters = 0;
+	int dim = 2;						//default 2 dimensions
+	char* inFile = "";				//"/Users/neil/Documents/cluster.csv", /afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
+	char* outFile = "";				//"./output/2doutput_mpi.csv"
+	double stopThreshold = 0.001;		//default threshold
+	int maxIter = 100000;				//default max iterations
+	int printTime = 0;
+	extern char optopt;
+	extern char* optarg;
+	
+	//process input
+	char arg; int err;
+	while((arg=getopt(argc,argv,"i:n:p:otmdv")) != -1) {
+        switch (arg) {
+            case 'i': {
+				inFile=optarg;
+				break;
+			}
+			case 'n': {
+				numClusters = atoi(optarg);
+				break;
+			}
+			case 'p': {
+				totalNumPoints = atoi(optarg);
+				break;
+			}
+			case 'o': {
+				outFile=optarg;
+				break;
+			}
+            case 't': {
+				stopThreshold=atof(optarg);
+				break;
+			}
+			case 'm': {
+				maxIter=atoi(optarg);
+				break;
+			}
+			case 'd': {
+				dim=atoi(optarg);
+				break;
+			}
+			case 'v': {
+				printTime=atoi(optarg);
+				break;
+			}
+			case '?': {
+				fprintf(stderr, "Unrecognized option -%c.\n", optopt);
+				err = 1;
+				break;
+			}
+            default: {
+				break;
+			}
+        }
+    }
+	
+	if(err==1 || (inFile && inFile[0] == '\0') || numClusters <= 0 || totalNumPoints <= 0 || stopThreshold <= 0.0 || maxIter <= 0) {
+		return 0;
+	}
+	
 	double** init_centers = (double**)malloc(numClusters*sizeof(double*));
-	int dim = 2;
-	int totalNumPoints = 50000;
 	struct timeb tmb;
 	
 	ftime(&tmb);	
 	double startInputTime = (double)tmb.time+(double)tmb.millitm/1000;
-	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
-	double** points = readFromFileForGP("/Users/neil/Documents/cluster.csv", dim, totalNumPoints);	
+	double** points = readFromFileForGP(inFile, dim, totalNumPoints);
 	ftime(&tmb);
 	double endInputTime = (double)tmb.time+(double)tmb.millitm/1000;
-	printf("Read done\n");
 	
 	ftime(&tmb);
 	double startClusteringTime = (double)tmb.time+(double)tmb.millitm/1000;
 	double** cluster_centers = get_cluster_centers_seq(points, totalNumPoints,
 												  numClusters, dim,
-												  1000000, totalNumPoints,
-												  0.0);
+												  maxIter, totalNumPoints,
+												  stopThreshold);
 	ftime(&tmb);			
 	double endClusteringTime = (double)tmb.time+(double)tmb.millitm/1000;
-	printf("Clustering done\n");
 	
 	
 	ftime(&tmb);
 	double startOutputTime = (double)tmb.time+(double)tmb.millitm/1000;
-	writeToFileForGP("./output/2doutput_seq.csv", cluster_centers, numClusters, dim);
+	if(outFile && outFile[0] != '\0') {
+		writeToFileForGP(outFile, cluster_centers, numClusters, dim);
+	} else {
+		printToTerminal(cluster_centers, numClusters, dim);
+	}
 	ftime(&tmb);
 	double endOutputTime = (double)tmb.time+(double)tmb.millitm/1000;
-	printf("Write done\n");
 	
-	
-	printf("IO time: %lf\n", (endInputTime-startInputTime+endOutputTime-startOutputTime));
-	printf("Clustering time: %lf\n", (endClusteringTime-startClusteringTime));
+	if(printTime == 1) {
+		printf("IO time: %lf\n", (endInputTime-startInputTime+endOutputTime-startOutputTime));
+		printf("Clustering time: %lf\n", (endClusteringTime-startClusteringTime));
+	}
 	
 	free(points);
 	free(cluster_centers);

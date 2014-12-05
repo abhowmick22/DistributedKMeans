@@ -165,6 +165,17 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 
 int main(int argc, char* argv[]) {
 	
+	int totalNumPoints = 0;
+	int numClusters = 0;
+	int dim = 2;						//default 2 dimensions
+	char* inFile = "";				//"/Users/neil/Documents/cluster.csv", /afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
+	char* outFile = "";				//"./output/2doutput_mpi.csv"
+	double stopThreshold = 0.001;		//default threshold
+	int maxIter = 100000;				//default max iterations
+	int printTime = 0;
+	extern char optopt;
+	extern char* optarg;
+	
 	int flag;
 	MPI_Initialized(&flag);
 
@@ -179,18 +190,68 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Get_processor_name(processor_name, &namelen);
 	
-	int numClusters = 5;
+	
+	//process input
+	char arg; int err;
+	while((arg=getopt(argc,argv,"i:n:p:otmdv")) != -1) {
+        switch (arg) {
+            case 'i': {
+				inFile=optarg;
+				break;
+			}
+			case 'n': {
+				numClusters = atoi(optarg);
+				break;
+			}
+			case 'p': {
+				totalNumPoints = atoi(optarg);
+				break;
+			}
+			case 'o': {
+				outFile=optarg;
+				break;
+			}
+            case 't': {
+				stopThreshold=atof(optarg);
+				break;
+			}
+			case 'm': {
+				maxIter=atoi(optarg);
+				break;
+			}
+			case 'd': {
+				dim=atoi(optarg);
+				break;
+			}
+			case 'v': {
+				printTime=atoi(optarg);
+				break;
+			}
+			case '?': {
+				fprintf(stderr, "Unrecognized option -%c.\n", optopt);
+				err = 1;
+				break;
+			}
+            default: {
+				break;
+			}
+        }
+    }
+	
+	if(err==1 || (inFile && inFile[0] == '\0') || numClusters <= 0 || totalNumPoints <= 0 || stopThreshold <= 0.0 || maxIter <= 0) {
+		MPI_Finalize();
+		return 0;
+	}
+	
 	int* numPoints = (int*)malloc(sizeof(int));
 	double** init_centers = (double**)malloc(numClusters*sizeof(double*));
-	int dim = 2;
-	int totalNumPoints = 50000;
-	
+		
 	//block for all to synchronize
 	MPI_Barrier(MPI_COMM_WORLD);
 	double startInputTime = MPI_Wtime();
 	
-	///afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
-	double** points = readFromFileForMPI("/Users/neil/Documents/cluster.csv", numPoints,
+	
+	double** points = readFromFileForMPI(inFile, numPoints,
 					   					dim, totalNumPoints, numClusters,
 					   					rank, numProcs, init_centers);
 	
@@ -205,21 +266,26 @@ int main(int argc, char* argv[]) {
 	double startClusteringTime = MPI_Wtime();
 	double** cluster_centers = get_cluster_centers_mpi(points, *numPoints,
 												  init_centers, numClusters,
-												  dim, 1000000,
-												  totalNumPoints, 0.0);
+												  dim, maxIter,
+												  totalNumPoints, stopThreshold);
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	double endClusteringTime = MPI_Wtime();
 	
 	if(rank==0) {
 		double startOutputTime = MPI_Wtime();
-		writeToFileForGP("./output/2doutput_mpi.csv", cluster_centers, numClusters, dim);
+		if(outFile && outFile[0] != '\0') {
+			writeToFileForGP(outFile, cluster_centers, numClusters, dim);
+		} else {
+			printToTerminal(cluster_centers, numClusters, dim);
+		}
 		double endOutputTime = MPI_Wtime();
-		
-		//total IO time
-		printf("Total IO Time = %f\n", (endInputTime-startInputTime)+(endOutputTime-startOutputTime));
-		//total Clustering time
-		printf("Total Clustering Time = %f\n", (endClusteringTime-startClusteringTime));
+		if(printTime == 1) {
+			//total IO time
+			printf("Total IO Time = %f\n", (endInputTime-startInputTime)+(endOutputTime-startOutputTime));
+			//total Clustering time
+			printf("Total Clustering Time = %f\n", (endClusteringTime-startClusteringTime));
+		}
 	}
 	
 	

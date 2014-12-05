@@ -10,7 +10,7 @@ double** get_cluster_centers_seq(double**, int, int, int, int, int, double);
 double** readFromFileForMPI(char*, int*, int, int, int, int, int, double**);
 double** readFromFileForGP(char*, int, int);
 void writeToFileForGP(char*, double**, int, int);
+void printToTerminal(double**, int, int);
 
-void plotResults(double*, double*, int);
 
 #endif

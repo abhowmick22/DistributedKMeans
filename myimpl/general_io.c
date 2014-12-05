@@ -3,7 +3,6 @@
 #include <math.h>
 #include <string.h>
 #include "allfunc.h"
-//#include "mpi.h"
 
 /*
  * Reads data points from file for both MPI and sequential access.
@@ -13,7 +12,6 @@ double** readFromFileForGP(char* filename, int dim, int numPoints) {
 	
 	FILE* fp;
 	fp = fopen(filename, "r");
-	printf("%s\n", filename);
 	if(fp == NULL) {
 		return NULL;
 	}
@@ -83,4 +81,15 @@ void writeToFileForGP(char* filename, double** cluster_centers, int numClusters,
 		fprintf(file, "%f\n", cluster_centers[i][j]);
 	}
 	close(file);
+}
+
+void printToTerminal(double** cluster_centers, int numClusters, int dim) {
+	int i, j;
+	printf("-----Cluster centers-----\n");
+	for(i=0; i<numClusters; i++) {
+		for(j=0; j<dim-1; j++) {
+			printf("%f, ", cluster_centers[i][j]);
+		}
+		printf("%f\n", cluster_centers[i][j]);
+	}
 }
