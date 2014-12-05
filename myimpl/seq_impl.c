@@ -4,6 +4,11 @@
 #include <sys/timeb.h>
 #include "allfunc.h"
 
+/* User defined type for weighted point */
+typedef struct {
+int a,t,g,c;		// weights for bases 'a', 't', 'g', 'c'
+} weights;
+
 double calc_squared_dist(double* point1, double* point2, int dim) {
 	double retDist = 0.0f;
 	int i=0;
@@ -79,10 +84,10 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 		pointBelongsTo[i] = -1;
 	}
 	
-	//allocate memory for keeping track of sum of points that belong to each cluster
-	double** pointsInCluster = (double **)malloc(numClusters*sizeof(double*));
+	//allocate memory for keeping track of base weights at each cluster
+	weights** pointWeightsInCluster = (weights **)malloc(numClusters*sizeof(weights*));
 	for(i=0;i<numClusters;i++) {
-		pointsInCluster[i] = (double *)malloc(dim*sizeof(double));	//because we sum all the points for each cluster
+		pointWeightsInCluster[i] = (weights *)malloc(dim*sizeof(weights));	//because we accumulate weights all the points for each cluster
 	}
 	//initialize #points count for each cluster
 	int* numPointsInCluster = (int*)malloc(numClusters*sizeof(int));
@@ -92,9 +97,14 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 	int iter = 0;
 	
 	while(ratio > threshold && iter < maxIter) {
+
 		for(i=0;i<numClusters;i++) {
 			for(j=0;j<dim;j++) {
-				pointsInCluster[i][j] = 0.0;
+				// initialize weights
+				pointWeightsInCluster[i][j].a = 0;			
+				pointWeightsInCluster[i][j].t = 0;			
+				pointWeightsInCluster[i][j].g = 0;			
+				pointWeightsInCluster[i][j].c = 0;			
 			}
 			numPointsInCluster[i] = 0;
 		}
