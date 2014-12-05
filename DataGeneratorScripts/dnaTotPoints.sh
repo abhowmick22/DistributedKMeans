@@ -4,7 +4,7 @@
 o=input/dnaStrandsTotPoints.csv
 
 # Size of DNA strand
-s=10
+s=5
 
 #Number of Points
 n=10

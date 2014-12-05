@@ -69,7 +69,7 @@ char** readFromFileForMPI(char* filename, int* numPoints, int dim, int totalNumP
 		for(i=0; i<numClusters; i++) {
 			prevCenters[i] = -1;
 		}
-		for(i=0;i<numClusters;i++) {
+		for(i=0;i<numClusters;) {
 			srand(time(NULL));	// will introduce delay, but more randomized
 			int r = rand() % totalNumPoints;
 			//check if the same has been encountered before
@@ -85,6 +85,7 @@ char** readFromFileForMPI(char* filename, int* numPoints, int dim, int totalNumP
 			for(j=0;j<dim;j++) {
 				init_centers[i][j] = points[r][j];
 			}
+			i++;
 		}
 		free(prevCenters);
 		
@@ -140,6 +141,7 @@ char** readFromFileForMPI(char* filename, int* numPoints, int dim, int totalNumP
 			points[i] = &temp[i*dim];
 		}
 		MPI_Recv(points[0], (*numPoints)*dim, MPI_CHAR, 0, rank, MPI_COMM_WORLD, &status);
+		
 	}
 	
 	
