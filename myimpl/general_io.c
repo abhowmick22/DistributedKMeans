@@ -43,7 +43,7 @@ double** readFromFileForGP(char* filename, int dim, int numPoints) {
 				return NULL;
 			}
 			points[numPointsSoFar][i] = nextDim;
-			token = strtok(NULL, splitString);			// walk through remaining tokens in the line
+			token = strtok(NULL, splitString);
 			i++;
 		}
 		if(i != dim) {
@@ -56,9 +56,9 @@ double** readFromFileForGP(char* filename, int dim, int numPoints) {
 		memset(line, 0, 200);
 		//print the point read
 		for(j=0;j<dim-1;j++) {
-			printf("%lf, ", points[numPointsSoFar-1][j]);
+			printf("%f, ", points[numPointsSoFar-1][j]);
 		}
-		printf("%lf\n", points[numPointsSoFar-1][dim-1]);
+		printf("%f\n", points[numPointsSoFar-1][dim-1]);
 	}
 	if(numPointsSoFar != numPoints) {
 		//error: number of input points should be at least as much as mentioned by user

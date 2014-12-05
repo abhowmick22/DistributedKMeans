@@ -83,13 +83,11 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 			if(closest_cluster != pointBelongsTo[i]) {
 				localPointsChanged++;
 				pointBelongsTo[i] = closest_cluster;
-			}
-			
+			}			
 			for(j=0;j<dim;j++) {
 				pointsInCluster[closest_cluster][j] += points[i][j];
 			}
 			numPointsInCluster[closest_cluster]++;
-						
 		}
 		
 		int totalPointsChanged = 0;
@@ -98,12 +96,8 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 		
 		//get the total sum of number of points that changed centers
 		MPI_Allreduce(&localPointsChanged, &totalPointsChanged, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-		//get the total number of points in the dataset (could also be passed as a param to this function)
-		//MPI_Allreduce(&numPoints, &totalNumPoints, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		//for each center, get total number of points belonging to it
-		for(i=0;i<numClusters;i++) {
-			MPI_Allreduce(&numPointsInCluster[i], &tempNumPointsInCluster[i], 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-		}
+		MPI_Allreduce(numPointsInCluster, tempNumPointsInCluster, numClusters, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		int* freeNumPointsInCluster = numPointsInCluster;
 		numPointsInCluster = tempNumPointsInCluster;
 		free(freeNumPointsInCluster);
@@ -113,9 +107,7 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 		for(i=0;i<numClusters;i++) {
 			tempPointsInCluster[i] = &temp[i*dim];
 		}
-		for(i=0;i<numClusters;i++) {
-			MPI_Allreduce(pointsInCluster[i], tempPointsInCluster[i], dim, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		}
+		MPI_Allreduce(pointsInCluster[0], tempPointsInCluster[0], numClusters*dim, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 		double** freePointsInCluster = pointsInCluster;
 		pointsInCluster = tempPointsInCluster;
 		free(freePointsInCluster);
@@ -123,7 +115,7 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 		//assign new cluster centers
 		for(i=0; i<numClusters; i++) {
 			if(numPointsInCluster[i]==0) {
-				//CHECK: shouldn't happen because we start with centers chosen from input data points
+				//shouldn't happen because we start with centers chosen from input data points
 				continue;
 			}
 			for(j=0; j<dim; j++) {
@@ -133,30 +125,6 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 		
 		iter++;
 		ratio = ((double)totalPointsChanged)/totalNumPoints;
-//		if(ratio==threshold) {
-//			int rank;
-//			MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//			if(rank==0) {
-//				for(i=0; i<numClusters; i++) {
-//					printf("Cluster centers:\n");
-//					for(j=0; j<dim; j++) {
-//						printf("%f, ",cluster_centers[i][j]);
-//					}
-//					printf("\n");
-//					printf("Points in cluster:\n");
-//					int k=0;
-//					for(k=0;k<numPoints;k++) {
-//						if(pointBelongsTo[k] != i)
-//							continue;
-//						for(j=0; j<dim; j++) {
-//							printf("%f, ",points[k][j]);
-//						}
-//						printf("\n");
-//					}
-//					printf("\n");
-//				}
-//			}
-//		}
 	}
 	
 	return cluster_centers;
