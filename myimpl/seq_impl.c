@@ -4,6 +4,9 @@
 #include <sys/timeb.h>
 #include "allfunc.h"
 
+/*
+ * Calculates square of Euclidean distance between two points.
+ */
 double calc_squared_dist(double* point1, double* point2, int dim) {
 	double retDist = 0.0f;
 	int i=0;
@@ -13,6 +16,9 @@ double calc_squared_dist(double* point1, double* point2, int dim) {
 	return retDist;
 }
 
+/*
+ * Calculates the cluster center closest to a given points.
+ */
 int closest_cluster_calculator(double* point, double** cluster_centers,
 								int numClusters, int dim) {
 	double min_dist = calc_squared_dist(point, cluster_centers[0], dim);
@@ -33,12 +39,11 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 							int maxIter, int totalNumPoints,
 							double threshold) {
 				
-	//create initial centers = first numClusters number of
-	//points
+	//create initial centers = first numClusters number of points
 	double** cluster_centers = (double **)malloc(numClusters*sizeof(double*));
 	int i, j;
 	
-	//assign first numClusters points as initial centers
+	//code for assigning first numClusters points as initial centers
 //	for(i=0;i<numClusters;i++) {
 //		cluster_centers[i] = (double *)malloc(dim*sizeof(double));
 //		for(j=0;j<dim;j++) {
@@ -46,7 +51,7 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 //		}
 //	}
 	
-	//random initial centers
+	//assign random initial centers
 	int* prevCenters = (int*)malloc(numClusters*sizeof(int));
 	for(i=0; i<numClusters; i++) {
 		prevCenters[i] = -1;
@@ -84,7 +89,7 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 	for(i=0;i<numClusters;i++) {
 		pointsInCluster[i] = (double *)malloc(dim*sizeof(double));	//because we sum all the points for each cluster
 	}
-	//initialize #points count for each cluster
+	//initialize number of points count for each cluster
 	int* numPointsInCluster = (int*)malloc(numClusters*sizeof(int));
 	
 	//ratio = (# points changing cluster)/(total # points)
@@ -98,7 +103,6 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 			}
 			numPointsInCluster[i] = 0;
 		}
-
 		//for all points, calculate the closest cluster
 		int totalPointsChanged = 0;
 		for(i=0;i<numPoints;i++) {
@@ -111,10 +115,8 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 			for(j=0;j<dim;j++) {
 				pointsInCluster[closest_cluster][j] += points[i][j];
 			}
-			numPointsInCluster[closest_cluster]++;
-						
+			numPointsInCluster[closest_cluster]++;						
 		}
-		
 		//assign new cluster centers
 		for(i=0; i<numClusters; i++) {
 			if(numPointsInCluster[i]==0) {
@@ -125,12 +127,11 @@ double** get_cluster_centers_seq(double** points, int numPoints,
 				cluster_centers[i][j] = pointsInCluster[i][j]/numPointsInCluster[i];
 			}
 		}
-		
 		iter++;
 		ratio = ((double)totalPointsChanged)/numPoints;
 	}
 	
-	printf("Iter=%d\n", iter);
+	printf("Total Iterations=%d\n", iter);
 	
 	return cluster_centers;
 }
@@ -140,10 +141,10 @@ int main(int argc, char* argv[]) {
 	int totalNumPoints = 0;
 	int numClusters = 0;
 	int dim = 2;						//default 2 dimensions
-	char* inFile = "";				//"/Users/neil/Documents/cluster.csv", /afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
-	char* outFile = "";				//"./output/2doutput_mpi.csv"
 	double stopThreshold = 0.001;		//default threshold
 	int maxIter = 100000;				//default max iterations
+	char* inFile = "";
+	char* outFile = "";
 	int printTime = 0;
 	extern char optopt;
 	extern char* optarg;
@@ -153,34 +154,42 @@ int main(int argc, char* argv[]) {
 	while((arg=getopt(argc,argv,"i:n:p:otmdv")) != -1) {
         switch (arg) {
             case 'i': {
+				//input file
 				inFile=optarg;
 				break;
 			}
 			case 'n': {
+				//number of clusters
 				numClusters = atoi(optarg);
 				break;
 			}
 			case 'p': {
+				//total number of points
 				totalNumPoints = atoi(optarg);
 				break;
 			}
 			case 'o': {
+				//output file
 				outFile=optarg;
 				break;
 			}
             case 't': {
+				//threshold for stopping (number of points changed/total number of points)
 				stopThreshold=atof(optarg);
 				break;
 			}
 			case 'm': {
+				////maximum iterations (for stopping)
 				maxIter=atoi(optarg);
 				break;
 			}
 			case 'd': {
+				//number of dimensions of data points
 				dim=atoi(optarg);
 				break;
 			}
 			case 'v': {
+				//print the time taken for IO and Clustering (separately)
 				printTime=atoi(optarg);
 				break;
 			}
@@ -199,17 +208,20 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	
+	//malloc initial centers
 	double** init_centers = (double**)malloc(numClusters*sizeof(double*));
 	struct timeb tmb;
 	
 	ftime(&tmb);	
 	double startInputTime = (double)tmb.time+(double)tmb.millitm/1000;
+	//read input points from file
 	double** points = readFromFileForGP(inFile, dim, totalNumPoints);
 	ftime(&tmb);
 	double endInputTime = (double)tmb.time+(double)tmb.millitm/1000;
 	
 	ftime(&tmb);
 	double startClusteringTime = (double)tmb.time+(double)tmb.millitm/1000;
+	//start clustering
 	double** cluster_centers = get_cluster_centers_seq(points, totalNumPoints,
 												  numClusters, dim,
 												  maxIter, totalNumPoints,
@@ -229,10 +241,11 @@ int main(int argc, char* argv[]) {
 	double endOutputTime = (double)tmb.time+(double)tmb.millitm/1000;
 	
 	if(printTime == 1) {
-		printf("IO time: %lf\n", (endInputTime-startInputTime+endOutputTime-startOutputTime));
-		printf("Clustering time: %lf\n", (endClusteringTime-startClusteringTime));
+		printf("IO Time: %lf\n", (endInputTime-startInputTime+endOutputTime-startOutputTime));
+		printf("Clustering Time: %lf\n", (endClusteringTime-startClusteringTime));
+		printf("Total Time: %lf\n", (endInputTime-startInputTime+endOutputTime-startOutputTime)+(endClusteringTime-startClusteringTime));
 	}
-	
+	//free pointers
 	free(points);
 	free(cluster_centers);
 	return 0;

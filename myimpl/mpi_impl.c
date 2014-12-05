@@ -4,6 +4,9 @@
 #include "allfunc.h"
 #include "mpi.h"
 
+/*
+ * Calculates square of Euclidean distance between two points.
+ */
 double calc_squared_dist(double* point1, double* point2, int dim) {
 	double retDist = 0.0f;
 	int i=0;
@@ -13,6 +16,9 @@ double calc_squared_dist(double* point1, double* point2, int dim) {
 	return retDist;
 }
 
+/*
+ * Calculates the cluster center closest to a given points.
+ */
 int closest_cluster_calculator(double* point, double** cluster_centers,
 								int numClusters, int dim) {
 	double min_dist = calc_squared_dist(point, cluster_centers[0], dim);
@@ -28,6 +34,11 @@ int closest_cluster_calculator(double* point, double** cluster_centers,
 	return closest_center;
 }
 
+/*
+ * Calculates the cluster centers by calculating the closest centers 
+ * for all points on each node(processor), and then combining them iteratively
+ * to generate the final cluster centers.
+ */
 double** get_cluster_centers_mpi(double** points, int numPoints,
 								double** init_centers, int numClusters,
 								int dim, int maxIter,
@@ -61,7 +72,7 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 		pointsInCluster[i] = &temp[i*dim];	//because we sum all the points for each cluster;
 										    //also, contiguous memory very important for allreduce
 	}
-	//initialize #points count for each cluster
+	//initialize number of points count for each cluster
 	int* numPointsInCluster = (int*)malloc(numClusters*sizeof(int));
 	
 	//ratio = (# points changing cluster)/(total # points)
@@ -91,17 +102,20 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 		}
 		
 		int totalPointsChanged = 0;
-		//int totalNumPoints = 0;
 		int* tempNumPointsInCluster = (int*)malloc(numClusters*sizeof(int));
 		
 		//get the total sum of number of points that changed centers
 		MPI_Allreduce(&localPointsChanged, &totalPointsChanged, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		
 		//for each center, get total number of points belonging to it
+		//since we define a contiguous allocation above, we can use reduce for all at once
 		MPI_Allreduce(numPointsInCluster, tempNumPointsInCluster, numClusters, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		int* freeNumPointsInCluster = numPointsInCluster;
 		numPointsInCluster = tempNumPointsInCluster;
 		free(freeNumPointsInCluster);
+		
 		//for each center, get the sum of all coordinates of all points belonging to it
+		//again, for a contiguous memory space, it is faster to reduce for all centers at once
 		double** tempPointsInCluster = (double **)malloc(numClusters*sizeof(double*));
 		temp = (double*)malloc(numClusters*dim*sizeof(double));
 		for(i=0;i<numClusters;i++) {
@@ -122,24 +136,27 @@ double** get_cluster_centers_mpi(double** points, int numPoints,
 				cluster_centers[i][j] = pointsInCluster[i][j]/numPointsInCluster[i];
 			}
 		}
-		
 		iter++;
 		ratio = ((double)totalPointsChanged)/totalNumPoints;
 	}
-	
-	return cluster_centers;
-	
+	int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if(rank==0) {
+		printf("Total iterations: %d\n", iter);
+	}
+		
+	return cluster_centers;	
 }
 
 int main(int argc, char* argv[]) {
 	
 	int totalNumPoints = 0;
 	int numClusters = 0;
-	int dim = 2;						//default 2 dimensions
-	char* inFile = "";				//"/Users/neil/Documents/cluster.csv", /afs/andrew.cmu.edu/usr11/ndhruva/public/test.txt
-	char* outFile = "";				//"./output/2doutput_mpi.csv"
-	double stopThreshold = 0.001;		//default threshold
-	int maxIter = 100000;				//default max iterations
+	int dim = 2;					//default dimensions
+	double stopThreshold = 0.001;	//default threshold
+	int maxIter = 100000;			//default max iterations
+	char* inFile = "";
+	char* outFile = "";
 	int printTime = 0;
 	extern char optopt;
 	extern char* optarg;
@@ -157,41 +174,48 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Get_processor_name(processor_name, &namelen);
-	
-	
-	//process input
+		
+	//process command line input
 	char arg; int err;
 	while((arg=getopt(argc,argv,"i:n:p:otmdv")) != -1) {
         switch (arg) {
             case 'i': {
+				//input file
 				inFile=optarg;
 				break;
 			}
 			case 'n': {
+				//number of clusters
 				numClusters = atoi(optarg);
 				break;
 			}
 			case 'p': {
+				//total number of points
 				totalNumPoints = atoi(optarg);
 				break;
 			}
 			case 'o': {
+				//output file
 				outFile=optarg;
 				break;
 			}
             case 't': {
+				//threshold for stopping (number of points changed/total number of points)
 				stopThreshold=atof(optarg);
 				break;
 			}
 			case 'm': {
+				//maximum iterations (for stopping)
 				maxIter=atoi(optarg);
 				break;
 			}
 			case 'd': {
+				//number of dimensions of data points
 				dim=atoi(optarg);
 				break;
 			}
 			case 'v': {
+				//print the time taken for IO and Clustering (separately)
 				printTime=atoi(optarg);
 				break;
 			}
@@ -218,7 +242,7 @@ int main(int argc, char* argv[]) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	double startInputTime = MPI_Wtime();
 	
-	
+	//get the points for this processor from the master
 	double** points = readFromFileForMPI(inFile, numPoints,
 					   					dim, totalNumPoints, numClusters,
 					   					rank, numProcs, init_centers);
@@ -231,6 +255,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 		
+	//start clustering
 	double startClusteringTime = MPI_Wtime();
 	double** cluster_centers = get_cluster_centers_mpi(points, *numPoints,
 												  init_centers, numClusters,
@@ -253,10 +278,12 @@ int main(int argc, char* argv[]) {
 			printf("Total IO Time = %f\n", (endInputTime-startInputTime)+(endOutputTime-startOutputTime));
 			//total Clustering time
 			printf("Total Clustering Time = %f\n", (endClusteringTime-startClusteringTime));
+			//total time
+			printf("Total Time = %f\n", (endInputTime-startInputTime)+(endOutputTime-startOutputTime)+(endClusteringTime-startClusteringTime));
 		}
 	}
 	
-	
+	//free pointers
 	free(points);
 	free(cluster_centers);
 	free(init_centers);

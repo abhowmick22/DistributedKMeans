@@ -8,7 +8,8 @@
 /*
  * Return all points after reading from file and sending 
  * points to their corresponding processors for nearest cluster
- * center calculation.
+ * center calculation. Also return the number of points that belong
+ * to a processor through int* numPoints.
  */
 double** readFromFileForMPI(char* filename, int* numPoints,
 							int dim, int totalNumPoints, int numClusters,
@@ -55,7 +56,7 @@ double** readFromFileForMPI(char* filename, int* numPoints,
 	//This equally distributes points.
 	int pointsToAll = totalNumPoints/numProcs;
 	int pointToSome = totalNumPoints%numProcs;	//extra point is sent to those procs with
-												//rank < remaining #points (rank starts at 0)
+												//rank < remaining number of points (rank starts at 0)
 	int i, j;
 	temp = (double*)malloc(numClusters*dim*sizeof(double));
 	for(i=0; i<numClusters; i++) {
@@ -64,7 +65,6 @@ double** readFromFileForMPI(char* filename, int* numPoints,
 	
 	if(rank == 0) {
 		//master node
-		
 		//select initial centers randomly
 		int* prevCenters = (int*)malloc(numClusters*sizeof(int));		
 		for(i=0; i<numClusters; i++) {
@@ -90,7 +90,7 @@ double** readFromFileForMPI(char* filename, int* numPoints,
 		}
 		free(prevCenters);
 		
-		//broadcast init centers to all other nodes
+		//broadcast initial centers to all other nodes
 		MPI_Bcast(init_centers[0], numClusters*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		
 		int startIndex = 0;
@@ -129,22 +129,18 @@ double** readFromFileForMPI(char* filename, int* numPoints,
 		points = newPoints;
 		free(oldPoints);
 	} else {
-		//helper node		
-		
+		//helper(worker) node(processor)		
 		(*numPoints) = pointsToAll;
 		if(rank < pointToSome) {
 			(*numPoints)++;
-		}
-		
+		}		
 		points = (double**)malloc((*numPoints)*sizeof(double*));
 		temp = (double*)malloc((*numPoints)*dim*sizeof(double));
 		for(i=0; i<(*numPoints); i++) {
 			points[i] = &temp[i*dim];
 		}
+		//recieve the points from master
 		MPI_Recv(points[0], (*numPoints)*dim, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD, &status);
 	}
-	
-	
-	return points;
-	
+	return points;	
 }

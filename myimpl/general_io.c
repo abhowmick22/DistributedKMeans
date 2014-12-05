@@ -53,12 +53,7 @@ double** readFromFileForGP(char* filename, int dim, int numPoints) {
 			return NULL;
 		}
 		numPointsSoFar++;
-		memset(line, 0, 200);
-		//print the point read
-		for(j=0;j<dim-1;j++) {
-			printf("%f, ", points[numPointsSoFar-1][j]);
-		}
-		printf("%f\n", points[numPointsSoFar-1][dim-1]);
+		memset(line, 0, 200);		
 	}
 	if(numPointsSoFar != numPoints) {
 		//error: number of input points should be at least as much as mentioned by user
@@ -71,6 +66,9 @@ double** readFromFileForGP(char* filename, int dim, int numPoints) {
 	return points;
 }
 
+/*
+ * Write the cluster centers to the output file.
+ */
 void writeToFileForGP(char* filename, double** cluster_centers, int numClusters, int dim) {
 	FILE* file = fopen(filename, "w");
 	int i, j;
@@ -83,6 +81,9 @@ void writeToFileForGP(char* filename, double** cluster_centers, int numClusters,
 	close(file);
 }
 
+/*
+ * Print cluster centers to standard output.
+ */
 void printToTerminal(double** cluster_centers, int numClusters, int dim) {
 	int i, j;
 	printf("-----Cluster centers-----\n");
