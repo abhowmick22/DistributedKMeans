@@ -10,7 +10,7 @@
  * GP = General purpose.
  */
 char** readFromFileForGP(char* filename, int dim, int numPoints) {
-	
+	printf("trying to read\n");	
 	FILE* fp;
 	fp = fopen(filename, "r");
 	printf("%s\n", filename);
@@ -82,4 +82,15 @@ void writeToFileForGP(char* filename, char** cluster_centers, int numClusters, i
 		fprintf(file, "%c\n", cluster_centers[i][j]);
 	}
 	close(file);
+}
+
+void printToTerminal(char** cluster_centers, int numClusters, int dim) {
+	int i, j;
+	printf("-----Cluster centers-----\n");
+	for(i=0; i<numClusters; i++) {
+		for(j=0; j<dim-1; j++) {
+			printf("%c, ", cluster_centers[i][j]);
+		}
+		printf("%c\n", cluster_centers[i][j]);
+	}
 }

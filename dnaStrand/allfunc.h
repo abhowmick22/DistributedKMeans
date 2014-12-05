@@ -10,6 +10,6 @@ char** get_cluster_centers_seq(char**, int, int, int, int, int, double);
 char** readFromFileForMPI(char*, int*, int, int, int, int, int, char**);
 char** readFromFileForGP(char*, int, int);
 void writeToFileForGP(char*, char**, int, int);
-
+void printToTerminal(char**, int, int);
 
 #endif
