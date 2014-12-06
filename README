@@ -2,8 +2,11 @@ FILE AND DIRECTORY ORGANIZATION:
 
 1. D2Impl: Contains the source files for the 2D dataset code.
 2. Makefile (within D2Impl and DNAImpl dirs): contains the make commands for building the sequential and MPI implementations.
-3. kmeans.sh: Contained within the DataSetGenerator directory in D2Impl and DNAImpl directories, and is used to generate the dataset
-4. Lab4Report.pdf  -  The lab report describing the implementation and analysis.
+3. kmeans.sh: Contained within the DataSetGenerator directory in D2Impl, and is used to generate the 2D dataset
+4. 
+5. machines: File used to specify the machines used to run MPI on.
+6. Lab4Report.pdf  -  The lab report describing the implementation and analysis.
+
 
 COMPILE:
 
@@ -12,19 +15,32 @@ For the 2D dataset, please enter the D2Impl directory and do the following:
 make outmpi
 make outseq
 
-These commands will create the executables outmpi and outseq. 
+These commands will create the executables outmpi (executable that uses OpenMPI) and outseq (Executable for the sequential code). 
+
+For the DNA dataset, TODO
+
 
 EXECUTE:
 
-1. Please place the executables in the public directory on ghc machines.
-2. 
+-----For the 2D dataset:
+1. Edit and run kmeans.sh (b=points per cluster, k=number of clusters), located in DataGeneratorScripts. This will create the corresponding CSV file in the input
+directory in DataSetGenerator directory.
+2. Place the executables (e.g. outmpi) in the public directory on ghc machines.
+3. Go to your home directory on the GHC machines (one which contains public, private directories etc.) and run the following commands from there:
 
-/usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np $numProcs -machinefile $machFile $executable -n $n -p $p -i $inputFile
+For running sequential code:
+	time ./public/outseq -n $n -p $p -i $inputFile
+where $n is the number of clusters, $p is the number of points, and $inputFile is the input file containing the 2D points.
+For example,
+	time ./public/outseq -n 5 -p 50 -i public/test.csv
 
+For running the MPI code:
+	time /usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np $numProcs -machinefile $machFile public/outmpi -n $n -p $p -i $inputFile
+where $numProcs is the number of processors (worker nodes), $machFile is the machines file, and $n, $p and $inputFile are as above.
 For example:
-/usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np 4 -machinefile public/machines public/outmpi -n 15 -p 100000 -v1 -i public/cluster15_100000.csv
+	/usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np 4 -machinefile public/machines public/outmpi -n 5 -p 50 -i public/test.csv
 
-The available options are:
+The available options for execution are:
 -i : input file path (M)
 -n : number of clusters (M)
 -p : number of points (M)
@@ -36,3 +52,6 @@ The available options are:
 
 where M: mandatory, O: optional
 Please note that in our implementation, we had to supply optional parameters without a space between the option and the parameter, e.g., -v1. 
+
+
+-----For the DNA dataset
