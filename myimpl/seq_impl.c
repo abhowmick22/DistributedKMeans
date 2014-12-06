@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
 	
 	//process input
 	char arg; int err;
-	while((arg=getopt(argc,argv,"i:n:p:otmdv")) != -1) {
+	while((arg=getopt(argc,argv,"i:n:p:v::o::t::m::d::")) != -1) {
         switch (arg) {
             case 'i': {
 				//input file

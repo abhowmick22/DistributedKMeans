@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
 		
 	//process command line input
 	char arg; int err;
-	while((arg=getopt(argc,argv,"i:n:p:otmdv")) != -1) {
+	while((arg=getopt(argc,argv,"i:n:p:o::t::m::d::v::")) != -1) {
         switch (arg) {
             case 'i': {
 				//input file

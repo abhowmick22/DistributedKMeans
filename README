@@ -1,0 +1,38 @@
+FILE AND DIRECTORY ORGANIZATION:
+
+1. D2Impl: Contains the source files for the 2D dataset code.
+2. Makefile (within D2Impl and DNAImpl dirs): contains the make commands for building the sequential and MPI implementations.
+3. kmeans.sh: Contained within the DataSetGenerator directory in D2Impl and DNAImpl directories, and is used to generate the dataset
+4. Lab4Report.pdf  -  The lab report describing the implementation and analysis.
+
+COMPILE:
+
+For the 2D dataset, please enter the D2Impl directory and do the following:
+
+make outmpi
+make outseq
+
+These commands will create the executables outmpi and outseq. 
+
+EXECUTE:
+
+1. Please place the executables in the public directory on ghc machines.
+2. 
+
+/usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np $numProcs -machinefile $machFile $executable -n $n -p $p -i $inputFile
+
+For example:
+/usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np 4 -machinefile public/machines public/outmpi -n 15 -p 100000 -v1 -i public/cluster15_100000.csv
+
+The available options are:
+-i : input file path (M)
+-n : number of clusters (M)
+-p : number of points (M)
+-d : number of dimensions of data (O for 2D dataset, M for DNA dataset). (Default: 2 for 2D dataset)
+-o : output file (O)
+-t : threshold for stopping (double) (O) (default:0.001)
+-m : maximum number of iterations (O) (default:100000)
+-v : print time calculated by our program (O). 1 for printing time, 0 for not printing time (default:0)
+
+where M: mandatory, O: optional
+Please note that in our implementation, we had to supply optional parameters without a space between the option and the parameter, e.g., -v1. 
