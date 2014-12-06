@@ -54,7 +54,9 @@ def handleArgs(args):
         elif key == '-p':
             numPoints = int(val)
         elif key == '-o':
-            output = val
+			if val[-1] == '\r':
+				val = val[:-1]
+			output = val
         # now, the optional argument
         elif key == '-v':
             maxValue = float(val)
