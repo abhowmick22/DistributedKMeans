@@ -3,21 +3,21 @@ FILE AND DIRECTORY ORGANIZATION:
 1. D2Impl: Contains the source files for the 2D dataset code.
 2. Makefile (within D2Impl and DNAImpl dirs): contains the make commands for building the sequential and MPI implementations.
 3. kmeans.sh: Contained within the DataSetGenerator directory in D2Impl, and is used to generate the 2D dataset
-4. 
+4. TODO (your.sh)
 5. machines: File used to specify the machines used to run MPI on.
 6. Lab4Report.pdf  -  The lab report describing the implementation and analysis.
 
 
 COMPILE:
 
-For the 2D dataset, please enter the D2Impl directory and do the following:
+-----For the 2D dataset, please enter the D2Impl directory and do the following:
 
 make outmpi
 make outseq
 
 These commands will create the executables outmpi (executable that uses OpenMPI) and outseq (Executable for the sequential code). 
 
-For the DNA dataset, TODO
+-----For the DNA dataset, TODO
 
 
 EXECUTE:
@@ -54,4 +54,4 @@ where M: mandatory, O: optional
 Please note that in our implementation, we had to supply optional parameters without a space between the option and the parameter, e.g., -v1. 
 
 
------For the DNA dataset
+-----For the DNA dataset TODO
