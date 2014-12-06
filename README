@@ -1,11 +1,13 @@
 FILE AND DIRECTORY ORGANIZATION:
 
 1. D2Impl: Contains the source files for the 2D dataset code.
-2. Makefile (within D2Impl and DNAImpl dirs): contains the make commands for building the sequential and MPI implementations.
-3. kmeans.sh: Contained within the DataSetGenerator directory in D2Impl, and is used to generate the 2D dataset
-4. TODO (your.sh)
-5. machines: File used to specify the machines used to run MPI on.
-6. Lab4Report.pdf  -  The lab report describing the implementation and analysis.
+2. DNAImpl : Contains the source files for the DNA Strand dataset code.
+3. Makefile (within D2Impl and DNAImpl dirs): Contain the make commands for building the sequential and MPI implementations.
+4. kmeans.sh: Contained within the DataSetGenerator directory, and is used to generate the 2D dataset
+5. dnaClusterPoints.sh : Contained within the DataSetGenerator directory, used to generate the DNA dataset given number of clusters and points per cluster.
+6. dnaTotPoints.sh : Contained within the DataSetGenerator directory, used to generate the DNA dataset given total number of points.
+7. machines: File used to specify the machines used to run MPI on.
+8. Lab4Report.pdf  -  The lab report describing the implementation and analysis.
 
 
 COMPILE:
@@ -17,8 +19,12 @@ make outseq
 
 These commands will create the executables outmpi (executable that uses OpenMPI) and outseq (Executable for the sequential code). 
 
------For the DNA dataset, TODO
+-----For the DNA dataset, please enter the DNAImpl directory and do the following:
 
+make dnampi
+make dnaseq
+
+These commands will create the executables dnampi (executable that uses OpenMPI) and dnaseq (Executable for the sequential code). 
 
 EXECUTE:
 
@@ -54,4 +60,33 @@ where M: mandatory, O: optional
 Please note that in our implementation, we had to supply optional parameters without a space between the option and the parameter, e.g., -v1. 
 
 
------For the DNA dataset TODO
+-----For the DNA dataset
+1. Edit and run dnaClusterPoints.sh (o=relative path of output file, s=size of DNA strand, c=Number of clusters, p=Number of points per cluster), located in DataGeneratorScripts. This will create the corresponding CSV file in the input
+directory in DataSetGenerator directory. We can also use dnaTotPoints.sh to generate data points given just the total number of points, but we don't use that for testing.
+2. Place the executables (e.g. dnampi) in the public directory on ghc machines.
+3. Go to your home directory on the GHC machines (one which contains public, private directories etc.) and run the following commands from there:
+
+For running sequential code:
+	time ./public/dnaseq -n $n -p $p -d $d -i $inputFile
+where $n is the number of clusters, $p is the number of points, $d is the size of DNA strands and $inputFile is the input file containing the DNA strands.
+For example,
+	time ./public/dnaseq -n 5 -p 50 -d 20 -i public/test.csv
+
+For running the MPI code:
+	time /usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np $numProcs -machinefile $machFile public/dnampi -n $n -p $p -d $dim -i $inputFile
+where $numProcs is the number of processors (worker nodes), $machFile is the machines file, $dim is the dimension of DNA strands and $n, $p and $inputFile are as above.
+For example:
+	/usr/lib64/openmpi/bin/mpirun --mca btl_tcp_if_include eth0 -np 4 -machinefile public/machines public/outmpi -n 5 -p 50 -d 20 -i public/test.csv
+
+The available options for execution are:
+-i : input file path (M)
+-n : number of clusters (M)
+-p : number of points (M)
+-d : number of dimensions of data (O for 2D dataset, M for DNA dataset). (Default: 2 for 2D dataset)
+-o : output file (O)
+-t : threshold for stopping (double) (O) (default:0.001)
+-m : maximum number of iterations (O) (default:100000)
+-v : print time calculated by our program (O). 1 for printing time, 0 for not printing time (default:0)
+
+where M: mandatory, O: optional
+Please note that in our implementation, we had to supply optional parameters without a space between the option and the parameter, e.g., -v1. 
