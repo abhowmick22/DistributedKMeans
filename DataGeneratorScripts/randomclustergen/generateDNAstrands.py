@@ -58,7 +58,11 @@ def handleArgs(args):
     for key, val in optlist:
         # first, the required arguments
         if key == '-o':
-            output = val
+			print(val)
+			if val[-1] == '\r':
+				val = val[:-1]
+			print(val)
+			output = val
         elif key == '-s':
             sizeStrand = int(val)
         # now, the optional arguments
@@ -118,7 +122,7 @@ if totPoints > 0:
 # cluster and centroid info for future verification
 else :
 		# file for storing underlying info
-		centroidWriter = csv.writer(open(output + "-centroidinfo", 'w'))
+		#centroidWriter = csv.writer(open(output + "-centroidinfo", 'w'))
 		
 		# step 1: generate centroid strands
 		centroids = []
@@ -127,7 +131,7 @@ else :
 			# generate a random strand
 			for j in range(sizeStrand):
 				s += getRandomBase()
-			centroidWriter.writerow(s)
+			#centroidWriter.writerow(s)
 			centroids.append(s)
 
 		# step 2: for each cluster, generate points
